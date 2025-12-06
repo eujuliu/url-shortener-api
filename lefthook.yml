@@ -1,0 +1,18 @@
+pre-commit:
+  parallel: true
+  commands:
+    spotless:
+      glob: "*.java"
+      run: ./mvnw spotless:check
+    checkstyle:
+      glob: "*.java"
+      run: ./mvnw checkstyle:check
+commit-msg:
+  commands:
+    validate-message:
+      run: |
+        head -n1 {1} | grep -qE "^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
+      errorMessage: |
+        ❌ Invalid commit message!
+        Please follow Conventional Commits (https://www.conventionalcommits.org)
+        Example: 'feat(auth): add login endpoint'
