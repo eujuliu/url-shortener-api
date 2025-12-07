@@ -1,5 +1,5 @@
 /* (C)2025 */
-package com.example.urlshortenerapi.config;
+package com.example.urlshortenerapi.shared.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

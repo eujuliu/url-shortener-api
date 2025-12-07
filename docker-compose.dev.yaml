@@ -14,7 +14,7 @@ services:
       JVM_EXTRA_OPTS: "-Xms256M -Xmx512M"
 
     healthcheck:
-      test: ["CMD-SHELL", "nodetool status"]
+      test: [ "CMD-SHELL", "nodetool status" ]
       interval: 1m
       start_period: 2m
       timeout: 10s
@@ -31,7 +31,7 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD-SHELL", "nodetool status"]
+      test: [ "CMD-SHELL", "nodetool status" ]
       interval: 1m
       start_period: 2m
       timeout: 10s
@@ -48,7 +48,7 @@ services:
         condition: service_healthy
 
     healthcheck:
-      test: ["CMD-SHELL", "nodetool status"]
+      test: [ "CMD-SHELL", "nodetool status" ]
       interval: 1m
       start_period: 2m
       timeout: 10s
@@ -62,7 +62,7 @@ services:
       - "6379:6379"
       - "8001:8001"
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 3s
       retries: 3

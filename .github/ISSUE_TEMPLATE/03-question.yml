@@ -1,6 +1,6 @@
 name: Ask a Question
 description: Do you have a question about the repository, code, or implementation of something in the project? Ask a question.
-labels: ["question"]
+labels: [ "question" ]
 body:
   - type: markdown
     attributes:

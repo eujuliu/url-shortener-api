@@ -14,6 +14,6 @@ public class UserController {
     @ResponseStatus(HttpStatus.OK)
     @GetMapping("")
     public String getUsers() {
-        return "User list 1";
+        return "User list 2";
     }
 }

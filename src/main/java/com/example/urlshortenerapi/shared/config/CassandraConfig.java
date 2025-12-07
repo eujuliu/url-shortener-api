@@ -1,14 +1,16 @@
 /* (C)2025 */
-package com.example.urlshortenerapi.config;
+package com.example.urlshortenerapi.shared.config;
 
-import java.util.List;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.cassandra.config.AbstractCassandraConfiguration;
 import org.springframework.data.cassandra.core.cql.keyspace.CreateKeyspaceSpecification;
 import org.springframework.data.cassandra.core.cql.keyspace.KeyspaceOption;
 import org.springframework.data.cassandra.core.cql.keyspace.SpecificationBuilder;
+
+import java.util.List;
 
 @Configuration
 public class CassandraConfig extends AbstractCassandraConfiguration {
@@ -29,8 +31,8 @@ public class CassandraConfig extends AbstractCassandraConfiguration {
     }
 
     @Override
-    protected String getLocalDataCenter() {
-        return this.localDatacenter;
+    protected @Nullable String getLocalDataCenter() {
+        return localDatacenter;
     }
 
     @Override
