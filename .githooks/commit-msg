@@ -1,16 +1,19 @@
-#!/usr/bin/env bash
+#!/bin/sh
 
-convetional_commit_regex="^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z \-]+\))?!?: .+$"
+COMMIT_MSG_FILE=$1
 
-commit_message=$(cat "$1")
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
 
-if [[ "$commit_message" =~ $convetional_commit_regex ]]; then
-   echo -e "\e[32mCommit message meets Conventional Commit standards...\e[0m"
-   exit 0
+PATTERN="^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?: .+"
+
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
+  echo "--------------------------------------------------------"
+  echo "[ERROR] Invalid commit message format."
+  echo ""
+  echo "Your commit message: \"$COMMIT_MSG\""
+  echo ""
+  echo "Allowed types: feat, fix, docs, style, refactor, perf, test, build, ci, chore, revert"
+  echo "Correct example: feat(auth): add login endpoint"
+  echo "--------------------------------------------------------"
+  exit 1
 fi
-
-echo -e "\e[31mThe commit message does not meet the Conventional Commit standard\e[0m"
-echo "An example of a valid message is: "
-echo "  feat(login): add the 'remember me' button"
-echo "More details at: https://www.conventionalcommits.org/en/v1.0.0/#summary"
-exit 1
