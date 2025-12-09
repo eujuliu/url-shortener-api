@@ -6,5 +6,6 @@ import java.util.List;
 
 public record ErrorResponseDTO(
         LocalDateTime timestamp, String error, String message, List<FieldError> fieldErrors) {
-    public record FieldError(String field, String message) {}
+    public record FieldError(String field, String message) {
+    }
 }

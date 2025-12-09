@@ -14,7 +14,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @Builder
-public class UserResponseDto {
+public class UserResponseDTO {
     private String userId;
     private String name;
     private String email;

@@ -4,10 +4,7 @@ WORKDIR /app
 
 COPY pom.xml .
 COPY src ./src
-COPY mvnw ./
-COPY .mvn ./.mvn
-COPY checkstyle.xml ./
 
-RUN ./mvnw dependency:go-offline
+RUN mvn dependency:go-offline
 
-CMD ["./mvnw", "spring-boot:run", "-Pdocker"]
+CMD ["mvn", "spring-boot:run", "-Pdocker"]

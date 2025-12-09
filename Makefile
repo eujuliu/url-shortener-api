@@ -2,7 +2,7 @@
 
 watch:
 	cat .env* > .env.docker; \
-	docker compose -f ./docker-compose.dev.yaml -p shortener watch --prune; \
+	docker compose -f ./docker-compose.dev.yaml -p shortener up --watch --build --force-recreate --attach shortener; \
 	make watch_down
 
 watch_down:

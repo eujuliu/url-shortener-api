@@ -25,7 +25,7 @@ public class SecurityConfig {
         http.authorizeHttpRequests(
                         authorizeRequests ->
                                 authorizeRequests
-                                        .requestMatchers(HttpMethod.POST, "/user")
+                                        .requestMatchers(HttpMethod.POST, "/api/v1/user")
                                         .permitAll()
                                         .requestMatchers("/actuator/**")
                                         .permitAll()

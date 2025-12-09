@@ -4,20 +4,22 @@ package com.example.urlshortenerapi.features.user.dto;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Null;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+@Getter
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-public class UserCreateDto {
+public class UserRequestDTO {
     @NotBlank
     @Size(min = 5, max = 64)
-    @Pattern(regexp = "^[A-Za-z0-9]+$", message = "Name must contain only letters and numbers")
+    @Pattern(
+            regexp = "^[A-Za-z0-9]+$",
+            message = "Name must contain only letters and numbers"
+    )
     private String name;
 
     @Email
@@ -26,10 +28,18 @@ public class UserCreateDto {
     @NotNull
     private String email;
 
-    @Null
     @Size(min = 8, max = 72)
-    @Pattern(
-            regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).+$",
-            message = "Password must contain at least one lowercase and uppercase letter, one digit and one symbol")
+    @Pattern.List({
+            @Pattern(
+                    regexp = ".*[a-z].*",
+                    message = "Password must contain at least 1 lowercase letter"),
+            @Pattern(
+                    regexp = ".*[A-Z].*",
+                    message = "Password must contain at least 1 uppercase letter"),
+            @Pattern(regexp = ".*\\d.*", message = "Password must contain at least 1 digit"),
+            @Pattern(
+                    regexp = ".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*",
+                    message = "Password must contain at least 1 special character")
+    })
     private String password;
 }
