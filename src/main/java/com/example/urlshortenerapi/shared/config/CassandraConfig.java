@@ -1,6 +1,7 @@
 /* (C)2025 */
 package com.example.urlshortenerapi.shared.config;
 
+import java.util.List;
 import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,10 +10,10 @@ import org.springframework.data.cassandra.config.AbstractCassandraConfiguration;
 import org.springframework.data.cassandra.core.cql.keyspace.CreateKeyspaceSpecification;
 import org.springframework.data.cassandra.core.cql.keyspace.KeyspaceOption;
 import org.springframework.data.cassandra.core.cql.keyspace.SpecificationBuilder;
-
-import java.util.List;
+import org.springframework.data.cassandra.repository.config.EnableCassandraRepositories;
 
 @Configuration
+@EnableCassandraRepositories
 public class CassandraConfig extends AbstractCassandraConfiguration {
 
     @Value("${spring.cassandra.contact-points:localhost}")
