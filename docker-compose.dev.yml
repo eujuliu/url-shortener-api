@@ -4,7 +4,6 @@ services:
     container_name: cassandra1
     ports:
       - "9042:9042"
-
     environment: &environment
       CASSANDRA_SEEDS: "cassandra1,cassandra2"
       CASSANDRA_CLUSTER_NAME: MyTestCluster
@@ -12,13 +11,13 @@ services:
       CASSANDRA_RACK: RACK1
       CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
       JVM_EXTRA_OPTS: "-Xms256M -Xmx512M"
-
     healthcheck:
-      test: [ "CMD-SHELL", "nodetool status" ]
+      test: ["CMD-SHELL", "nodetool status"]
       interval: 1m
       start_period: 2m
       timeout: 10s
       retries: 3
+    profiles: [services, all]
 
   cassandra2:
     image: cassandra:latest
@@ -29,13 +28,13 @@ services:
     depends_on:
       cassandra1:
         condition: service_healthy
-
     healthcheck:
-      test: [ "CMD-SHELL", "nodetool status" ]
+      test: ["CMD-SHELL", "nodetool status"]
       interval: 1m
       start_period: 2m
       timeout: 10s
       retries: 3
+    profiles: [services, all]
 
   cassandra3:
     image: cassandra:latest
@@ -46,13 +45,13 @@ services:
     depends_on:
       cassandra2:
         condition: service_healthy
-
     healthcheck:
-      test: [ "CMD-SHELL", "nodetool status" ]
+      test: ["CMD-SHELL", "nodetool status"]
       interval: 1m
       start_period: 2m
       timeout: 10s
       retries: 3
+    profiles: [services, all]
 
   redis:
     image: redis/redis-stack
@@ -62,10 +61,11 @@ services:
       - "6379:6379"
       - "8001:8001"
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 3s
       retries: 3
+    profiles: [services, all]
 
   shortener:
     build:
@@ -75,32 +75,58 @@ services:
     env_file:
       - .env.docker
     container_name: shortener
-    ports:
-      - "8080:8080"
     depends_on:
       cassandra3:
         condition: service_healthy
       redis:
         condition: service_healthy
+    ports:
+      - "8080:8080"
+    volumes:
+      - app:/app:rw
+      - root:/root:rw
+    profiles: [all]
+    develop:
+      watch:
+        - action: sync
+          path: ./src
+          target: /app/src
 
+        - action: sync
+          path: ./pom.xml
+          target: /app/
+
+        - action: rebuild
+          path: ./.env.docker
+          target: /app/
     healthcheck:
-      test: [ "CMD", "curl", "http://localhost:8080/actuator/health/liveness" ]
+      test: ["CMD", "curl", "http://localhost:8080/ping"]
       interval: 10s
       timeout: 3s
       retries: 3
 
-
-    develop:
-      watch:
-        - action: sync+restart
-          path: ./src
-          target: /app/src
-        - action: rebuild
-          path: ./pom.xml
-          target: /app/
-        - action: rebuild
-          path: ./.env.docker
-          target: /app/
+  watch_mode:
+    image: alpine:latest
+    container_name: watch_mode
+    depends_on:
+      shortener:
+        condition: service_healthy
+    volumes:
+      - app:/app:rw
+      - root:/root:rw
+    working_dir: /app
+    profiles: [all]
+    command: >
+      /bin/sh -c "
+      apk add --no-cache inotify-tools openjdk17 &&
+      while true; do
+        inotifywait -r -q -e create -e modify -e delete -e move ./ > /dev/null;
+        ./mvnw compile -Pdocker;
+      done
+      "
+volumes:
+  app:
+  root:
 
 networks:
   default:

@@ -1,12 +1,16 @@
-.PHONY: watch watch_down
+.PHONY: services watch watch_down watch_prune
+
+services:
+	cat .env* 2>/dev/null | grep -E '^[A-Za-z_][A-Za-z0-9_]*=.+' | awk -F= '!seen[$$1]++' > .env.docker; \
+	docker compose -f ./docker-compose.dev.yml --profile services -p shortener up -d
 
 watch:
-	cat .env* > .env.docker; \
-	docker compose -f ./docker-compose.dev.yaml -p shortener up --watch --build --force-recreate --attach shortener; \
+	cat .env* 2>/dev/null | grep -E '^[A-Za-z_][A-Za-z0-9_]*=.+' | awk -F= '!seen[$$1]++' > .env.docker; \
+	docker compose -f ./docker-compose.dev.yml -p shortener  up shortener watch_mode --watch --build --force-recreate --attach shortener; \
 	make watch_down
 
 watch_down:
-	docker compose -f ./docker-compose.dev.yaml -p shortener down shortener --volumes --remove-orphans; \
+	docker compose -f ./docker-compose.dev.yml -p shortener down --volumes --remove-orphans; \
 	rm -f .env.docker
 
 watch_prune:
