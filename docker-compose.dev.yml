@@ -92,7 +92,7 @@ services:
           path: ./src
           target: /app/src
 
-        - action: sync
+        - action: rebuild
           path: ./pom.xml
           target: /app/
 
@@ -100,7 +100,7 @@ services:
           path: ./.env.docker
           target: /app/
     healthcheck:
-      test: ["CMD", "curl", "http://localhost:8080/ping"]
+      test: ["CMD", "curl", "http://localhost:8080/actuator/health/liveness"]
       interval: 10s
       timeout: 3s
       retries: 3
