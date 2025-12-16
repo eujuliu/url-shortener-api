@@ -121,7 +121,7 @@ services:
       apk add --no-cache inotify-tools openjdk17 &&
       while true; do
         inotifywait -r -q -e create -e modify -e delete -e move ./ > /dev/null;
-        ./mvnw compile -Pdocker;
+        ./mvnw compile;
       done
       "
 volumes:

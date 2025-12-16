@@ -1,4 +1,4 @@
-package com.julio.urlshortenerapi.config;
+package com.julio.urlshortenerapi.shared.config;
 
 import java.util.List;
 import org.jspecify.annotations.NullMarked;
@@ -25,6 +25,9 @@ public class CassandraConfig extends AbstractCassandraConfiguration {
   @Value("${spring.cassandra.keyspace}")
   protected String keyspace;
 
+  @Value("${spring.cassandra.schema-action}")
+  protected SchemaAction schemaAction;
+
   @Override
   @NullMarked
   protected String getKeyspaceName() {
@@ -45,7 +48,7 @@ public class CassandraConfig extends AbstractCassandraConfiguration {
   @Override
   @NullMarked
   public SchemaAction getSchemaAction() {
-    return SchemaAction.CREATE_IF_NOT_EXISTS;
+    return this.schemaAction;
   }
 
   @Override
