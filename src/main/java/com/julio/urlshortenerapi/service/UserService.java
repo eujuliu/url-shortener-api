@@ -2,7 +2,9 @@ package com.julio.urlshortenerapi.service;
 
 import com.julio.urlshortenerapi.dto.UserRequestDTO;
 import com.julio.urlshortenerapi.dto.UserResponseDTO;
+import com.julio.urlshortenerapi.model.OAuthProvider;
 import com.julio.urlshortenerapi.model.User;
+import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,22 +18,34 @@ public class UserService {
   private UserRepository userRepository;
 
   @Autowired
+  private OAuthProviderRepository oauthProviderRepository;
+
+  @Autowired
   private PasswordEncoder passwordEncoder;
 
   public UserResponseDTO create(UserRequestDTO data) throws ConflictError {
-    User exists = this.userRepository.findByEmail(data.getEmail());
+    User user = this.userRepository.findByEmail(data.getEmail());
 
-    if (exists != null) {
+    if (user != null) {
       throw new ConflictError(null, 0);
     }
 
-    User user = User.builder()
+    user = User.builder()
       .name(data.getName())
       .email(data.getEmail())
       .password(this.passwordEncoder.encode(data.getPassword()))
       .build();
 
     this.userRepository.save(user);
+
+    OAuthProvider provider = OAuthProvider.builder()
+      .email(user.getEmail())
+      .userId(user.getUserId())
+      .provider("password")
+      .emailVerified(false)
+      .build();
+
+    this.oauthProviderRepository.save(provider);
 
     return UserResponseDTO.builder()
       .name(user.getName())
