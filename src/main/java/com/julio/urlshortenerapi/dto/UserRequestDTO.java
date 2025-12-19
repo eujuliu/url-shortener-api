@@ -14,40 +14,50 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserRequestDTO {
 
-  @NotBlank
-  @Size(min = 5, max = 64)
+  public interface OnCreate {}
+
+  public interface OnLogin {}
+
+  @NotBlank(groups = OnCreate.class)
+  @Size(min = 5, max = 64, groups = OnCreate.class)
+  @NotNull(groups = OnCreate.class)
   @Pattern(
     regexp = "^[A-Za-z0-9]+$",
-    message = "Name must contain only letters and numbers"
+    message = "Name must contain only letters and numbers",
+    groups = OnCreate.class
   )
   private String name;
 
-  @Email
-  @NotBlank
-  @NotNull
+  @Email(groups = { OnCreate.class, OnLogin.class })
+  @NotBlank(groups = { OnCreate.class, OnLogin.class })
+  @NotNull(groups = { OnCreate.class, OnLogin.class })
   @Size(max = 254)
   private String email;
 
-  @NotBlank
-  @NotNull
-  @Size(min = 8, max = 72)
+  @NotBlank(groups = { OnCreate.class, OnLogin.class })
+  @NotNull(groups = { OnCreate.class, OnLogin.class })
+  @Size(min = 8, max = 72, groups = { OnCreate.class, OnLogin.class })
   @Pattern.List(
     {
       @Pattern(
         regexp = ".*[a-z].*",
-        message = "Password must contain at least 1 lowercase letter"
+        message = "Password must contain at least 1 lowercase letter",
+        groups = { OnCreate.class, OnLogin.class }
       ),
       @Pattern(
         regexp = ".*[A-Z].*",
-        message = "Password must contain at least 1 uppercase letter"
+        message = "Password must contain at least 1 uppercase letter",
+        groups = { OnCreate.class, OnLogin.class }
       ),
       @Pattern(
         regexp = ".*\\d.*",
-        message = "Password must contain at least 1 digit"
+        message = "Password must contain at least 1 digit",
+        groups = { OnCreate.class, OnLogin.class }
       ),
       @Pattern(
         regexp = ".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*",
-        message = "Password must contain at least 1 special character"
+        message = "Password must contain at least 1 special character",
+        groups = { OnCreate.class, OnLogin.class }
       ),
     }
   )

@@ -4,6 +4,7 @@ import com.julio.urlshortenerapi.model.OAuthProvider;
 import com.julio.urlshortenerapi.model.User;
 import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -92,7 +94,18 @@ public class OAuth2Service extends DefaultOAuth2UserService {
       this.oAuthProviderRepository.save(oAuthProvider);
     }
 
-    return oAuthUser;
+    Map<String, Object> customAttributes = new HashMap<>(attributes);
+
+    customAttributes.put("user_id", user.getUserId().toString());
+    customAttributes.put("email", email);
+    customAttributes.put("name", name);
+    customAttributes.put("provider", registrationId);
+
+    return new DefaultOAuth2User(
+      oAuthUser.getAuthorities(),
+      customAttributes,
+      "email"
+    );
   }
 
   private String fetchGitHubEmail(OAuth2UserRequest request) {

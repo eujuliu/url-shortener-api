@@ -7,8 +7,11 @@ import com.julio.urlshortenerapi.model.User;
 import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
+import com.julio.urlshortenerapi.shared.errors.NotFoundError;
+import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -51,6 +54,61 @@ public class UserService {
       .name(user.getName())
       .email(user.getEmail())
       .userId(user.getUserId().toString())
+      .createdAt(user.getCreatedAt())
+      .updatedAt(user.getUpdatedAt())
+      .build();
+  }
+
+  public UserResponseDTO show(UserRequestDTO data)
+    throws NotFoundError, ConflictError, UnauthorizedError {
+    User user = this.userRepository.findByEmail(data.getEmail());
+
+    if (user == null) {
+      throw new NotFoundError(null, 0);
+    }
+
+    if (user.getPassword() == null || user.getPassword().isEmpty()) {
+      throw new ConflictError(
+        "Please login using your Social Provider (Google or Github)",
+        0
+      );
+    }
+
+    if (!passwordEncoder.matches(data.getPassword(), user.getPassword())) {
+      throw new UnauthorizedError("Invalid Password or Email", 0);
+    }
+
+    return UserResponseDTO.builder()
+      .name(user.getName())
+      .email(user.getEmail())
+      .userId(user.getUserId().toString())
+      .createdAt(user.getCreatedAt())
+      .updatedAt(user.getUpdatedAt())
+      .build();
+  }
+
+  public UserResponseDTO showWithoutPassword(OAuth2User principal)
+    throws NotFoundError {
+    String email = principal.getAttribute("email");
+
+    if (email == null) {
+      email = principal.getAttribute("email");
+    }
+
+    if (email == null) {
+      throw new NotFoundError("User not found for this email", 0);
+    }
+
+    User user = userRepository.findByEmail(email);
+
+    if (user == null) {
+      throw new NotFoundError("User not found for this email", 0);
+    }
+
+    return UserResponseDTO.builder()
+      .userId(user.getUserId().toString())
+      .name(user.getName())
+      .email(user.getEmail())
       .createdAt(user.getCreatedAt())
       .updatedAt(user.getUpdatedAt())
       .build();

@@ -1,5 +1,6 @@
 package com.julio.urlshortenerapi.shared.config;
 
+import com.julio.urlshortenerapi.component.OAuth2SuccessHandler;
 import com.julio.urlshortenerapi.service.OAuth2Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,6 +23,9 @@ public class SecurityConfig {
   @Autowired
   private OAuth2Service oauth2Service;
 
+  @Autowired
+  private OAuth2SuccessHandler oAuth2SuccessHandler;
+
   @Bean
   public PasswordEncoder passwordEncoder() {
     return new BCryptPasswordEncoder();
@@ -37,11 +41,13 @@ public class SecurityConfig {
       csrf
         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-        .ignoringRequestMatchers("/api/v1/user")
+        .ignoringRequestMatchers("/api/v1/login", "/api/v1/register")
     );
 
     http.authorizeHttpRequests(auth -> {
-      auth.requestMatchers(HttpMethod.POST, "/api/v1/user").permitAll();
+      auth
+        .requestMatchers(HttpMethod.POST, "/api/v1/login", "/api/v1/register")
+        .permitAll();
       auth.requestMatchers("/actuator/**", "/api/v1/login/**").permitAll();
       auth.anyRequest().authenticated();
     });
@@ -54,7 +60,9 @@ public class SecurityConfig {
         redirection.baseUri("/api/v1/login/oauth2/code/*")
       );
 
-      oauth2.defaultSuccessUrl(successUrl, true);
+      oauth2.successHandler(this.oAuth2SuccessHandler);
+
+      this.oAuth2SuccessHandler.setDefaultTargetUrl(successUrl);
       oauth2.failureUrl(failureUrl);
 
       oauth2.userInfoEndpoint(info -> {
