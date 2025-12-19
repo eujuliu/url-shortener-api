@@ -7,6 +7,7 @@ import com.julio.urlshortenerapi.shared.errors.ConflictError;
 import com.julio.urlshortenerapi.shared.errors.NotFoundError;
 import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import java.util.Collections;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +16,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.RememberMeServices;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,21 +32,27 @@ public class UserController {
   @Autowired
   private UserService userService;
 
+  @Autowired
+  private RememberMeServices rememberMeServices;
+
   @PostMapping("/register")
   public UserResponseDTO register(
     @Validated(
       UserRequestDTO.OnCreate.class
     ) @RequestBody UserRequestDTO request,
-    HttpServletRequest servletRequest
+    HttpServletRequest servletRequest,
+    HttpServletResponse servletResponse
   ) throws ConflictError {
     UserResponseDTO user = this.userService.create(request);
 
-    this.updateSession(
+    UsernamePasswordAuthenticationToken auth = this.updateSession(
       user.getEmail(),
       user.getUserId(),
       user.getName(),
       servletRequest
     );
+
+    this.rememberMeServices.loginSuccess(servletRequest, servletResponse, auth);
 
     return user;
   }
@@ -54,16 +62,19 @@ public class UserController {
     @Validated(
       UserRequestDTO.OnLogin.class
     ) @RequestBody UserRequestDTO request,
-    HttpServletRequest servletRequest
+    HttpServletRequest servletRequest,
+    HttpServletResponse servletResponse
   ) throws NotFoundError, ConflictError, UnauthorizedError {
     UserResponseDTO user = this.userService.show(request);
 
-    this.updateSession(
+    UsernamePasswordAuthenticationToken auth = this.updateSession(
       user.getEmail(),
       user.getUserId(),
       user.getName(),
       servletRequest
     );
+
+    this.rememberMeServices.loginSuccess(servletRequest, servletResponse, auth);
 
     return user;
   }
@@ -76,7 +87,7 @@ public class UserController {
     return this.userService.showWithoutPassword(principal);
   }
 
-  private void updateSession(
+  private UsernamePasswordAuthenticationToken updateSession(
     String email,
     String userId,
     String name,
@@ -101,5 +112,7 @@ public class UserController {
     session.setAttribute("user_name", name);
     session.setAttribute("user_email", email);
     session.setAttribute("login_provider", "password");
+
+    return auth;
   }
 }

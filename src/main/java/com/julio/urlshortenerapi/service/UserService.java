@@ -9,13 +9,17 @@ import com.julio.urlshortenerapi.repository.UserRepository;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
 import com.julio.urlshortenerapi.shared.errors.NotFoundError;
 import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
+import java.util.Collections;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 @Service
-public class UserService {
+public class UserService implements UserDetailsService {
 
   @Autowired
   private UserRepository userRepository;
@@ -25,6 +29,25 @@ public class UserService {
 
   @Autowired
   private PasswordEncoder passwordEncoder;
+
+  @Override
+  public UserDetails loadUserByUsername(String email)
+    throws UsernameNotFoundException {
+    com.julio.urlshortenerapi.model.User user = userRepository.findByEmail(
+      email
+    );
+
+    if (user == null) {
+      throw new UsernameNotFoundException("User not found");
+    }
+
+    return org.springframework.security.core.userdetails.User.withUsername(
+      user.getEmail()
+    )
+      .password(user.getPassword() != null ? user.getPassword() : "")
+      .authorities(Collections.emptyList())
+      .build();
+  }
 
   public UserResponseDTO create(UserRequestDTO data) throws ConflictError {
     User user = this.userRepository.findByEmail(data.getEmail());
