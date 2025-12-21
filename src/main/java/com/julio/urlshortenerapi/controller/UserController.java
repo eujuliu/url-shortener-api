@@ -81,10 +81,9 @@ public class UserController {
 
   @GetMapping("/me")
   public UserResponseDTO getCurrentUser(
-    @AuthenticationPrincipal OAuth2User principal,
-    HttpSession session
+    @AuthenticationPrincipal OAuth2User principal
   ) throws NotFoundError {
-    return this.userService.showWithoutPassword(principal);
+    return this.userService.getUserByEmail(principal.getAttribute("email"));
   }
 
   private UsernamePasswordAuthenticationToken updateSession(

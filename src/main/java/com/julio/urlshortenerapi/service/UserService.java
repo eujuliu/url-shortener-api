@@ -110,14 +110,7 @@ public class UserService implements UserDetailsService {
       .build();
   }
 
-  public UserResponseDTO showWithoutPassword(OAuth2User principal)
-    throws NotFoundError {
-    String email = principal.getAttribute("email");
-
-    if (email == null) {
-      email = principal.getAttribute("email");
-    }
-
+  public UserResponseDTO getUserByEmail(String email) throws NotFoundError {
     if (email == null) {
       throw new NotFoundError("User not found for this email", 0);
     }
