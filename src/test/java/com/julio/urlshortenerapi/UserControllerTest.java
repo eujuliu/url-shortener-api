@@ -1,5 +1,6 @@
 package com.julio.urlshortenerapi;
 
+import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -13,6 +14,7 @@ import com.julio.urlshortenerapi.model.OAuthProvider;
 import com.julio.urlshortenerapi.model.User;
 import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
+import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -101,7 +103,15 @@ class UserControllerTest {
       )
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.email").value("test@example.com"))
-      .andExpect(jsonPath("$.name").value("ValidName"));
+      .andExpect(jsonPath("$.name").value("ValidName"))
+      .andDo(result -> {
+        HttpSession session = result.getRequest().getSession();
+
+        assertNotNull(session.getAttribute("user_id"));
+        assertEquals("test@example.com", session.getAttribute("user_email"));
+        assertEquals("ValidName", session.getAttribute("user_name"));
+        assertEquals("password", session.getAttribute("login_provider"));
+      });
   }
 
   @Test
@@ -339,7 +349,15 @@ class UserControllerTest {
       )
       .andExpect(status().isOk())
       .andExpect(jsonPath("$.email").value("test@example.com"))
-      .andExpect(jsonPath("$.name").value("ValidName"));
+      .andExpect(jsonPath("$.name").value("ValidName"))
+      .andDo(result -> {
+        HttpSession session = result.getRequest().getSession();
+
+        assertNotNull(session.getAttribute("user_id"));
+        assertEquals("test@example.com", session.getAttribute("user_email"));
+        assertEquals("ValidName", session.getAttribute("user_name"));
+        assertEquals("password", session.getAttribute("login_provider"));
+      });
   }
 
   @Test
