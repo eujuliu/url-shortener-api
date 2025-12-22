@@ -15,7 +15,6 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -49,7 +48,8 @@ public class UserService implements UserDetailsService {
       .build();
   }
 
-  public UserResponseDTO create(UserRequestDTO data) throws ConflictError {
+  public UserResponseDTO create(UserRequestDTO data)
+    throws ConflictError, Exception {
     User user = this.userRepository.findByEmail(data.getEmail());
 
     if (user != null) {

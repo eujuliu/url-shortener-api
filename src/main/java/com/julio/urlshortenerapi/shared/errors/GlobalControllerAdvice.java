@@ -19,6 +19,10 @@ public class GlobalControllerAdvice {
   public ResponseEntity<Error> handleValidationException(
     MethodArgumentNotValidException ex
   ) {
+    logger.error(
+      String.format("%s: %s", ex.getClass().getName(), ex.getMessage())
+    );
+
     List<String> errors = ex
       .getBindingResult()
       .getFieldErrors()

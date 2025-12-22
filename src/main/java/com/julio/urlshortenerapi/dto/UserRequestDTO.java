@@ -37,29 +37,10 @@ public class UserRequestDTO {
   @NotBlank(groups = { OnCreate.class, OnLogin.class })
   @NotNull(groups = { OnCreate.class, OnLogin.class })
   @Size(min = 8, max = 72, groups = { OnCreate.class, OnLogin.class })
-  @Pattern.List(
-    {
-      @Pattern(
-        regexp = ".*[a-z].*",
-        message = "Password must contain at least 1 lowercase letter",
-        groups = { OnCreate.class, OnLogin.class }
-      ),
-      @Pattern(
-        regexp = ".*[A-Z].*",
-        message = "Password must contain at least 1 uppercase letter",
-        groups = { OnCreate.class, OnLogin.class }
-      ),
-      @Pattern(
-        regexp = ".*\\d.*",
-        message = "Password must contain at least 1 digit",
-        groups = { OnCreate.class, OnLogin.class }
-      ),
-      @Pattern(
-        regexp = ".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*",
-        message = "Password must contain at least 1 special character",
-        groups = { OnCreate.class, OnLogin.class }
-      ),
-    }
+  @Pattern(
+    regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,72}$",
+    message = "Password don't fill the requirements",
+    groups = { OnCreate.class, OnLogin.class }
   )
   private String password;
 }

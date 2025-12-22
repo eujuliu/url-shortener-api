@@ -42,7 +42,7 @@ public class UserController {
     ) @RequestBody UserRequestDTO request,
     HttpServletRequest servletRequest,
     HttpServletResponse servletResponse
-  ) throws ConflictError {
+  ) throws ConflictError, Exception {
     UserResponseDTO user = this.userService.create(request);
 
     UsernamePasswordAuthenticationToken auth = this.updateSession(
