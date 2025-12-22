@@ -3,8 +3,8 @@ package com.julio.urlshortenerapi;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -304,5 +304,122 @@ class UserControllerTest {
           "password - size must be between 8 and 72"
         )
       );
+  }
+
+  @Test
+  void login_WithValidCredentials_ShouldReturn200() throws Exception {
+    UserRequestDTO request = new UserRequestDTO(
+      null,
+      "test@example.com",
+      "Password!123"
+    );
+
+    User existingUser = User.builder()
+      .userId(UUID.randomUUID())
+      .name("ValidName")
+      .email("test@example.com")
+      .password("encodedPass")
+      .createdAt(LocalDateTime.now())
+      .updatedAt(LocalDateTime.now())
+      .build();
+
+    when(userRepository.findByEmail("test@example.com")).thenReturn(
+      existingUser
+    );
+    when(passwordEncoder.matches("Password!123", "encodedPass")).thenReturn(
+      true
+    );
+
+    mockMvc
+      .perform(
+        post("/api/v1/login")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(objectMapper.writeValueAsString(request))
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.email").value("test@example.com"))
+      .andExpect(jsonPath("$.name").value("ValidName"));
+  }
+
+  @Test
+  void login_WithInvalidEmail_ShouldReturn404() throws Exception {
+    UserRequestDTO request = new UserRequestDTO(
+      null,
+      "nonexistent@example.com",
+      "Password!123"
+    );
+
+    when(userRepository.findByEmail("nonexistent@example.com")).thenReturn(
+      null
+    );
+
+    mockMvc
+      .perform(
+        post("/api/v1/login")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(objectMapper.writeValueAsString(request))
+          .with(csrf())
+      )
+      .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void login_WithWrongPassword_ShouldReturn401() throws Exception {
+    UserRequestDTO request = new UserRequestDTO(
+      null,
+      "test@example.com",
+      "WrongPassword!123"
+    );
+
+    User existingUser = User.builder()
+      .userId(UUID.randomUUID())
+      .name("ValidName")
+      .email("test@example.com")
+      .password("encodedPass")
+      .createdAt(LocalDateTime.now())
+      .updatedAt(LocalDateTime.now())
+      .build();
+
+    when(userRepository.findByEmail("test@example.com")).thenReturn(
+      existingUser
+    );
+    when(
+      passwordEncoder.matches("WrongPassword!123", "encodedPass")
+    ).thenReturn(false);
+
+    mockMvc
+      .perform(
+        post("/api/v1/login")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(objectMapper.writeValueAsString(request))
+          .with(csrf())
+      )
+      .andExpect(status().isUnauthorized());
+  }
+
+  @Test
+  void getCurrentUser_WithOAuth2_ShouldReturn200() throws Exception {
+    User oauthUser = User.builder()
+      .userId(UUID.randomUUID())
+      .name("OAuthUser")
+      .email("oauth@example.com")
+      .createdAt(LocalDateTime.now())
+      .updatedAt(LocalDateTime.now())
+      .build();
+
+    when(userRepository.findByEmail("oauth@example.com")).thenReturn(oauthUser);
+
+    mockMvc
+      .perform(
+        get("/api/v1/me").with(
+          oauth2Login().attributes(attrs ->
+            attrs.put("email", "oauth@example.com")
+          )
+        )
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.email").value("oauth@example.com"))
+      .andExpect(jsonPath("$.name").value("OAuthUser"));
   }
 }

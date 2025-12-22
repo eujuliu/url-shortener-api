@@ -38,7 +38,7 @@ public class UserRequestDTO {
   @NotNull(groups = { OnCreate.class, OnLogin.class })
   @Size(min = 8, max = 72, groups = { OnCreate.class, OnLogin.class })
   @Pattern(
-    regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).{8,72}$",
+    regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).+$",
     message = "Password don't fill the requirements",
     groups = { OnCreate.class, OnLogin.class }
   )
