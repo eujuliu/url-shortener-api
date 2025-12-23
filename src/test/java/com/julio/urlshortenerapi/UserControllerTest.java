@@ -1,6 +1,5 @@
 package com.julio.urlshortenerapi;
 
-import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
@@ -13,8 +12,8 @@ import com.julio.urlshortenerapi.dto.UserRequestDTO;
 import com.julio.urlshortenerapi.model.OAuthProvider;
 import com.julio.urlshortenerapi.model.User;
 import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
+import com.julio.urlshortenerapi.repository.RefreshTokenRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
-import jakarta.servlet.http.HttpSession;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -53,6 +52,9 @@ class UserControllerTest {
 
   @MockitoBean
   private UserRepository userRepository;
+
+  @MockitoBean
+  private RefreshTokenRepository refreshTokenRepository;
 
   @MockitoBean
   private OAuthProviderRepository oAuthProviderRepository;
@@ -102,16 +104,10 @@ class UserControllerTest {
           .with(csrf())
       )
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$.email").value("test@example.com"))
-      .andExpect(jsonPath("$.name").value("ValidName"))
-      .andDo(result -> {
-        HttpSession session = result.getRequest().getSession();
-
-        assertNotNull(session.getAttribute("user_id"));
-        assertEquals("test@example.com", session.getAttribute("user_email"));
-        assertEquals("ValidName", session.getAttribute("user_name"));
-        assertEquals("password", session.getAttribute("login_provider"));
-      });
+      .andExpect(jsonPath("$.user.email").value("test@example.com"))
+      .andExpect(jsonPath("$.user.name").value("ValidName"))
+      .andExpect(jsonPath("$.accessToken").isString())
+      .andExpect(cookie().exists("refresh_token"));
   }
 
   @Test
@@ -348,16 +344,10 @@ class UserControllerTest {
           .with(csrf())
       )
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$.email").value("test@example.com"))
-      .andExpect(jsonPath("$.name").value("ValidName"))
-      .andDo(result -> {
-        HttpSession session = result.getRequest().getSession();
-
-        assertNotNull(session.getAttribute("user_id"));
-        assertEquals("test@example.com", session.getAttribute("user_email"));
-        assertEquals("ValidName", session.getAttribute("user_name"));
-        assertEquals("password", session.getAttribute("login_provider"));
-      });
+      .andExpect(jsonPath("$.user.email").value("test@example.com"))
+      .andExpect(jsonPath("$.user.name").value("ValidName"))
+      .andExpect(jsonPath("$.accessToken").isString())
+      .andExpect(cookie().exists("refresh_token"));
   }
 
   @Test

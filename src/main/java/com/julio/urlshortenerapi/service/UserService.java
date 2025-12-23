@@ -1,7 +1,5 @@
 package com.julio.urlshortenerapi.service;
 
-import com.julio.urlshortenerapi.dto.UserRequestDTO;
-import com.julio.urlshortenerapi.dto.UserResponseDTO;
 import com.julio.urlshortenerapi.model.OAuthProvider;
 import com.julio.urlshortenerapi.model.User;
 import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
@@ -9,16 +7,14 @@ import com.julio.urlshortenerapi.repository.UserRepository;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
 import com.julio.urlshortenerapi.shared.errors.NotFoundError;
 import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
-import java.util.Collections;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
-public class UserService implements UserDetailsService {
+public class UserService {
 
   @Autowired
   private UserRepository userRepository;
@@ -29,37 +25,18 @@ public class UserService implements UserDetailsService {
   @Autowired
   private PasswordEncoder passwordEncoder;
 
-  @Override
-  public UserDetails loadUserByUsername(String email)
-    throws UsernameNotFoundException {
-    com.julio.urlshortenerapi.model.User user = userRepository.findByEmail(
-      email
-    );
-
-    if (user == null) {
-      throw new UsernameNotFoundException("User not found");
-    }
-
-    return org.springframework.security.core.userdetails.User.withUsername(
-      user.getEmail()
-    )
-      .password(user.getPassword() != null ? user.getPassword() : "")
-      .authorities(Collections.emptyList())
-      .build();
-  }
-
-  public UserResponseDTO create(UserRequestDTO data)
+  public User create(String email, String name, String password)
     throws ConflictError, Exception {
-    User user = this.userRepository.findByEmail(data.getEmail());
+    User user = this.userRepository.findByEmail(email);
 
     if (user != null) {
       throw new ConflictError(null, 0);
     }
 
     user = User.builder()
-      .name(data.getName())
-      .email(data.getEmail())
-      .password(this.passwordEncoder.encode(data.getPassword()))
+      .name(name)
+      .email(email)
+      .password(this.passwordEncoder.encode(password))
       .build();
 
     this.userRepository.save(user);
@@ -73,18 +50,12 @@ public class UserService implements UserDetailsService {
 
     this.oauthProviderRepository.save(provider);
 
-    return UserResponseDTO.builder()
-      .name(user.getName())
-      .email(user.getEmail())
-      .userId(user.getUserId().toString())
-      .createdAt(user.getCreatedAt())
-      .updatedAt(user.getUpdatedAt())
-      .build();
+    return user;
   }
 
-  public UserResponseDTO show(UserRequestDTO data)
+  public User getUserByEmailAndPassword(String email, String password)
     throws NotFoundError, ConflictError, UnauthorizedError {
-    User user = this.userRepository.findByEmail(data.getEmail());
+    User user = this.userRepository.findByEmail(email);
 
     if (user == null) {
       throw new NotFoundError(null, 0);
@@ -97,20 +68,14 @@ public class UserService implements UserDetailsService {
       );
     }
 
-    if (!passwordEncoder.matches(data.getPassword(), user.getPassword())) {
+    if (!passwordEncoder.matches(password, user.getPassword())) {
       throw new UnauthorizedError("Invalid Password or Email", 0);
     }
 
-    return UserResponseDTO.builder()
-      .name(user.getName())
-      .email(user.getEmail())
-      .userId(user.getUserId().toString())
-      .createdAt(user.getCreatedAt())
-      .updatedAt(user.getUpdatedAt())
-      .build();
+    return user;
   }
 
-  public UserResponseDTO getUserByEmail(String email) throws NotFoundError {
+  public User getUserByEmail(String email) throws NotFoundError {
     if (email == null) {
       throw new NotFoundError("User not found for this email", 0);
     }
@@ -121,12 +86,6 @@ public class UserService implements UserDetailsService {
       throw new NotFoundError("User not found for this email", 0);
     }
 
-    return UserResponseDTO.builder()
-      .userId(user.getUserId().toString())
-      .name(user.getName())
-      .email(user.getEmail())
-      .createdAt(user.getCreatedAt())
-      .updatedAt(user.getUpdatedAt())
-      .build();
+    return user;
   }
 }

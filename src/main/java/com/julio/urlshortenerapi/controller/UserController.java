@@ -1,24 +1,24 @@
 package com.julio.urlshortenerapi.controller;
 
+import com.julio.urlshortenerapi.dto.AccessTokenResponseDTO;
 import com.julio.urlshortenerapi.dto.UserRequestDTO;
 import com.julio.urlshortenerapi.dto.UserResponseDTO;
+import com.julio.urlshortenerapi.model.User;
+import com.julio.urlshortenerapi.service.JwtService;
 import com.julio.urlshortenerapi.service.UserService;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
 import com.julio.urlshortenerapi.shared.errors.NotFoundError;
 import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-import java.util.Collections;
+import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContext;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.web.authentication.RememberMeServices;
-import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,85 +33,179 @@ public class UserController {
   private UserService userService;
 
   @Autowired
-  private RememberMeServices rememberMeServices;
+  private JwtService jwtService;
+
+  @Value("${security.jwt.refresh-token.expiration-time}")
+  private int refreshTokenExpiration;
+
+  @Value("${security.jwt.refresh-token.cookie.secure}")
+  private boolean refreshTokenCookieSecure;
 
   @PostMapping("/register")
-  public UserResponseDTO register(
-    @Validated(
-      UserRequestDTO.OnCreate.class
-    ) @RequestBody UserRequestDTO request,
+  public AccessTokenResponseDTO register(
+    @Validated(UserRequestDTO.OnCreate.class) @RequestBody UserRequestDTO body,
+    @CookieValue(value = "refresh_token", required = false) String token,
     HttpServletRequest servletRequest,
     HttpServletResponse servletResponse
   ) throws ConflictError, Exception {
-    UserResponseDTO user = this.userService.create(request);
+    if (token != null) {
+      jwtService.revoke(token);
+    }
 
-    UsernamePasswordAuthenticationToken auth = this.updateSession(
-      user.getEmail(),
-      user.getUserId(),
-      user.getName(),
-      servletRequest
+    User user = this.userService.create(
+      body.getEmail(),
+      body.getName(),
+      body.getPassword()
     );
 
-    this.rememberMeServices.loginSuccess(servletRequest, servletResponse, auth);
+    String accessToken = jwtService.generateAccessToken(user);
+    String refreshToken = jwtService.generateRefreshToken(
+      user,
+      getUserIp(servletRequest),
+      getUserDevice(servletRequest)
+    );
 
-    return user;
+    Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
+    refreshCookie.setMaxAge(refreshTokenExpiration);
+    refreshCookie.setSecure(true);
+    refreshCookie.setHttpOnly(true);
+    refreshCookie.setPath("/");
+    servletResponse.addCookie(refreshCookie);
+
+    UserResponseDTO userResponse = UserResponseDTO.builder()
+      .userId(user.getUserId().toString())
+      .name(user.getName())
+      .email(user.getEmail())
+      .createdAt(user.getCreatedAt())
+      .updatedAt(user.getUpdatedAt())
+      .build();
+
+    return AccessTokenResponseDTO.builder()
+      .user(userResponse)
+      .accessToken(accessToken)
+      .build();
   }
 
   @PostMapping("/login")
-  public UserResponseDTO login(
-    @Validated(
-      UserRequestDTO.OnLogin.class
-    ) @RequestBody UserRequestDTO request,
+  public AccessTokenResponseDTO login(
+    @Validated(UserRequestDTO.OnLogin.class) @RequestBody UserRequestDTO body,
+    @CookieValue(value = "refresh_token", required = false) String token,
     HttpServletRequest servletRequest,
     HttpServletResponse servletResponse
   ) throws NotFoundError, ConflictError, UnauthorizedError {
-    UserResponseDTO user = this.userService.show(request);
+    if (token != null) {
+      jwtService.revoke(token);
+    }
 
-    UsernamePasswordAuthenticationToken auth = this.updateSession(
-      user.getEmail(),
-      user.getUserId(),
-      user.getName(),
-      servletRequest
+    User user = this.userService.getUserByEmailAndPassword(
+      body.getEmail(),
+      body.getPassword()
     );
 
-    this.rememberMeServices.loginSuccess(servletRequest, servletResponse, auth);
+    String accessToken = jwtService.generateAccessToken(user);
+    String refreshToken = jwtService.generateRefreshToken(
+      user,
+      getUserIp(servletRequest),
+      getUserDevice(servletRequest)
+    );
 
-    return user;
+    Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
+
+    refreshCookie.setMaxAge(refreshTokenExpiration);
+    refreshCookie.setSecure(refreshTokenCookieSecure);
+    refreshCookie.setHttpOnly(true);
+    refreshCookie.setPath("/");
+    servletResponse.addCookie(refreshCookie);
+
+    UserResponseDTO userResponse = UserResponseDTO.builder()
+      .userId(user.getUserId().toString())
+      .name(user.getName())
+      .email(user.getEmail())
+      .createdAt(user.getCreatedAt())
+      .updatedAt(user.getUpdatedAt())
+      .build();
+
+    return AccessTokenResponseDTO.builder()
+      .user(userResponse)
+      .accessToken(accessToken)
+      .build();
+  }
+
+  @GetMapping("/refresh")
+  public AccessTokenResponseDTO refresh(
+    @CookieValue(value = "refresh_token", required = false) String token
+  ) throws UnauthorizedError, NotFoundError {
+    if (token != null) {
+      throw new UnauthorizedError("Refresh token not found or invalid", 0);
+    }
+
+    boolean isValid = jwtService.isRefreshTokenValid(token);
+
+    if (!isValid) {
+      throw new UnauthorizedError("Refresh token not found or invalid", 0);
+    }
+
+    String email = jwtService.extractUsername(token);
+
+    User user = userService.getUserByEmail(email);
+
+    Map<String, String> tokens = jwtService.refresh(token, user);
+
+    UserResponseDTO userResponse = UserResponseDTO.builder()
+      .userId(user.getUserId().toString())
+      .name(user.getName())
+      .email(user.getEmail())
+      .createdAt(user.getCreatedAt())
+      .updatedAt(user.getUpdatedAt())
+      .build();
+
+    return AccessTokenResponseDTO.builder()
+      .user(userResponse)
+      .accessToken(tokens.get("accessToken"))
+      .build();
   }
 
   @GetMapping("/me")
-  public UserResponseDTO getCurrentUser(
-    @AuthenticationPrincipal OAuth2User principal
-  ) throws NotFoundError {
-    return this.userService.getUserByEmail(principal.getAttribute("email"));
+  public UserResponseDTO me(@AuthenticationPrincipal Object principal)
+    throws UnauthorizedError, NotFoundError {
+    if (principal instanceof User user) {
+      return UserResponseDTO.builder()
+        .name(user.getName())
+        .email(user.getEmail())
+        .createdAt(user.getCreatedAt())
+        .updatedAt(user.getUpdatedAt())
+        .build();
+    } else if (principal instanceof OAuth2User oauth) {
+      String email = oauth.getAttribute("email");
+
+      User user = userService.getUserByEmail(email);
+
+      return UserResponseDTO.builder()
+        .userId(user.getUserId().toString())
+        .name(user.getName())
+        .email(user.getEmail())
+        .createdAt(user.getCreatedAt())
+        .updatedAt(user.getUpdatedAt())
+        .build();
+    }
+    throw new UnauthorizedError("Not authenticated", 0);
   }
 
-  private UsernamePasswordAuthenticationToken updateSession(
-    String email,
-    String userId,
-    String name,
-    HttpServletRequest request
-  ) {
-    UsernamePasswordAuthenticationToken auth =
-      new UsernamePasswordAuthenticationToken(
-        email,
-        null,
-        Collections.emptyList()
-      );
+  private String getUserDevice(HttpServletRequest request) {
+    String userAgent = request.getHeader("User-Agent");
 
-    SecurityContext sc = SecurityContextHolder.getContext();
-    sc.setAuthentication(auth);
+    return userAgent;
+  }
 
-    HttpSession session = request.getSession(true);
-    session.setAttribute(
-      HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY,
-      sc
-    );
-    session.setAttribute("user_id", userId);
-    session.setAttribute("user_name", name);
-    session.setAttribute("user_email", email);
-    session.setAttribute("login_provider", "password");
+  private String getUserIp(HttpServletRequest request) {
+    String ipAddress = request.getRemoteAddr();
 
-    return auth;
+    String forwardedForHeader = request.getHeader("X-Forwarded-For");
+
+    if (forwardedForHeader != null && !forwardedForHeader.isEmpty()) {
+      ipAddress = forwardedForHeader.split(",")[0].trim();
+    }
+
+    return ipAddress;
   }
 }
