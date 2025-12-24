@@ -9,7 +9,7 @@ public class UnauthorizedError extends Error {
     super(
       message != null ? message : "Not authorized to access the resource",
       code != 0 ? code : HttpStatus.UNAUTHORIZED.value(),
-      "NotFoundError"
+      "UnauthorizedError"
     );
   }
 }

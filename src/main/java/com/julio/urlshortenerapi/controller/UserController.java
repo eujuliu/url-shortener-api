@@ -65,12 +65,7 @@ public class UserController {
       getUserDevice(servletRequest)
     );
 
-    Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
-    refreshCookie.setMaxAge(refreshTokenExpiration);
-    refreshCookie.setSecure(true);
-    refreshCookie.setHttpOnly(true);
-    refreshCookie.setPath("/");
-    servletResponse.addCookie(refreshCookie);
+    setRefreshToken(refreshToken, servletResponse);
 
     UserResponseDTO userResponse = UserResponseDTO.builder()
       .userId(user.getUserId().toString())
@@ -109,13 +104,7 @@ public class UserController {
       getUserDevice(servletRequest)
     );
 
-    Cookie refreshCookie = new Cookie("refresh_token", refreshToken);
-
-    refreshCookie.setMaxAge(refreshTokenExpiration);
-    refreshCookie.setSecure(refreshTokenCookieSecure);
-    refreshCookie.setHttpOnly(true);
-    refreshCookie.setPath("/");
-    servletResponse.addCookie(refreshCookie);
+    setRefreshToken(refreshToken, servletResponse);
 
     UserResponseDTO userResponse = UserResponseDTO.builder()
       .userId(user.getUserId().toString())
@@ -132,8 +121,9 @@ public class UserController {
   }
 
   @GetMapping("/refresh")
-  public AccessTokenResponseDTO refresh(
-    @CookieValue(value = "refresh_token", required = false) String token
+  public String refresh(
+    @CookieValue(value = "refresh_token", required = false) String token,
+    HttpServletResponse servletResponse
   ) throws UnauthorizedError, NotFoundError {
     if (token != null) {
       throw new UnauthorizedError("Refresh token not found or invalid", 0);
@@ -151,6 +141,30 @@ public class UserController {
 
     Map<String, String> tokens = jwtService.refresh(token, user);
 
+    setRefreshToken(tokens.get("refreshToken"), servletResponse);
+
+    return tokens.get("accessToken");
+  }
+
+  @GetMapping("/me")
+  public AccessTokenResponseDTO getCurrentUser(
+    @AuthenticationPrincipal OAuth2User principal,
+    HttpServletRequest servletRequest,
+    HttpServletResponse servletResponse
+  ) throws NotFoundError, UnauthorizedError {
+    User user = this.userService.getUserByEmail(
+      principal.getAttribute("email")
+    );
+
+    String accessToken = jwtService.generateAccessToken(user);
+    String refreshToken = jwtService.generateRefreshToken(
+      user,
+      getUserIp(servletRequest),
+      getUserDevice(servletRequest)
+    );
+
+    setRefreshToken(refreshToken, servletResponse);
+
     UserResponseDTO userResponse = UserResponseDTO.builder()
       .userId(user.getUserId().toString())
       .name(user.getName())
@@ -160,35 +174,9 @@ public class UserController {
       .build();
 
     return AccessTokenResponseDTO.builder()
+      .accessToken(accessToken)
       .user(userResponse)
-      .accessToken(tokens.get("accessToken"))
       .build();
-  }
-
-  @GetMapping("/me")
-  public UserResponseDTO me(@AuthenticationPrincipal Object principal)
-    throws UnauthorizedError, NotFoundError {
-    if (principal instanceof User user) {
-      return UserResponseDTO.builder()
-        .name(user.getName())
-        .email(user.getEmail())
-        .createdAt(user.getCreatedAt())
-        .updatedAt(user.getUpdatedAt())
-        .build();
-    } else if (principal instanceof OAuth2User oauth) {
-      String email = oauth.getAttribute("email");
-
-      User user = userService.getUserByEmail(email);
-
-      return UserResponseDTO.builder()
-        .userId(user.getUserId().toString())
-        .name(user.getName())
-        .email(user.getEmail())
-        .createdAt(user.getCreatedAt())
-        .updatedAt(user.getUpdatedAt())
-        .build();
-    }
-    throw new UnauthorizedError("Not authenticated", 0);
   }
 
   private String getUserDevice(HttpServletRequest request) {
@@ -207,5 +195,20 @@ public class UserController {
     }
 
     return ipAddress;
+  }
+
+  private void setRefreshToken(
+    String token,
+    HttpServletResponse servletResponse
+  ) {
+    Cookie refreshCookie = new Cookie("refresh_token", token);
+
+    refreshCookie.setMaxAge(refreshTokenExpiration);
+    refreshCookie.setSecure(refreshTokenCookieSecure);
+    refreshCookie.setAttribute("SameSite", "Lax");
+    refreshCookie.setHttpOnly(true);
+    refreshCookie.setPath("/");
+
+    servletResponse.addCookie(refreshCookie);
   }
 }

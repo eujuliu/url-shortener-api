@@ -101,11 +101,12 @@ public class OAuth2Service extends DefaultOAuth2UserService {
     customAttributes.put("name", name);
     customAttributes.put("provider", registrationId);
 
-    return new DefaultOAuth2User(
-      oAuthUser.getAuthorities(),
-      customAttributes,
-      "email"
-    );
+    // return new DefaultOAuth2User(
+    //   oAuthUser.getAuthorities(),
+    //   customAttributes,
+    //   "email"
+    // );
+    return oAuthUser;
   }
 
   private String fetchGitHubEmail(OAuth2UserRequest request) {

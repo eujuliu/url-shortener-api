@@ -1,7 +1,6 @@
 package com.julio.urlshortenerapi.shared.config;
 
 import com.julio.urlshortenerapi.component.JwtAuthenticationFilter;
-import com.julio.urlshortenerapi.component.OAuth2SuccessHandler;
 import com.julio.urlshortenerapi.service.OAuth2Service;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,8 +14,6 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.Http403ForbiddenEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -29,9 +26,6 @@ public class SecurityConfig {
   private OAuth2Service oauth2Service;
 
   @Autowired
-  private OAuth2SuccessHandler oAuth2SuccessHandler;
-
-  @Autowired
   private JwtAuthenticationFilter jwtAuthenticationFilter;
 
   @Bean
@@ -40,11 +34,15 @@ public class SecurityConfig {
     @Value("${security.oauth2.success-url}") String successUrl,
     @Value("${security.oauth2.failure-url}") String failureUrl
   ) throws Exception {
-    http.csrf(csrf ->
-      csrf
-        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-        .ignoringRequestMatchers("/api/v1/login", "/api/v1/register")
+    http.csrf(
+      csrf -> csrf.disable()
+      // .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+      // .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+      // .ignoringRequestMatchers(
+      //   "/api/v1/login",
+      //   "/api/v1/register",
+      //   "/api/v1/refresh"
+      // )
     );
 
     http.sessionManagement(session ->
@@ -60,7 +58,9 @@ public class SecurityConfig {
       auth
         .requestMatchers(HttpMethod.POST, "/api/v1/login", "/api/v1/register")
         .permitAll();
-      auth.requestMatchers("/actuator/**", "/api/v1/login/**").permitAll();
+      auth
+        .requestMatchers("/actuator/**", "/api/v1/login/**", "/api/v1/refresh")
+        .permitAll();
       auth.anyRequest().authenticated();
     });
 
@@ -72,13 +72,11 @@ public class SecurityConfig {
         redirection.baseUri("/api/v1/login/oauth2/code/*")
       );
 
-      oauth2.successHandler(this.oAuth2SuccessHandler);
-
-      this.oAuth2SuccessHandler.setDefaultTargetUrl(successUrl);
+      oauth2.defaultSuccessUrl(successUrl, true);
       oauth2.failureUrl(failureUrl);
 
       oauth2.userInfoEndpoint(info -> {
-        info.userService(this.oauth2Service);
+        info.userService(oauth2Service);
       });
     });
 
