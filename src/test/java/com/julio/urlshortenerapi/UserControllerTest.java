@@ -1,24 +1,31 @@
 package com.julio.urlshortenerapi;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
-import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.oauth2Login;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.jayway.jsonpath.JsonPath;
 import com.julio.urlshortenerapi.dto.UserRequestDTO;
 import com.julio.urlshortenerapi.model.OAuthProvider;
+import com.julio.urlshortenerapi.model.RefreshToken;
 import com.julio.urlshortenerapi.model.User;
 import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
 import com.julio.urlshortenerapi.repository.RefreshTokenRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
+import jakarta.servlet.http.Cookie;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
+import org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
@@ -26,20 +33,21 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@EnableAutoConfiguration(exclude = { CassandraAutoConfiguration.class })
 @TestPropertySource(
   properties = {
+    "logging.level.com.julio.urlshortenerapi.service.JwtService=DEBUG",
     "spring.security.oauth2.client.registration.google.client-id=dummy-google-id",
     "spring.security.oauth2.client.registration.google.client-secret=dummy-google-secret",
     "spring.security.oauth2.client.registration.github.client-id=dummy-github-id",
     "spring.security.oauth2.client.registration.github.client-secret=dummy-github-secret",
-    // Exclude auto-configurations
-    "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration," +
-      "org.springframework.boot.autoconfigure.data.redis.RedisAutoConfiguration," +
-      "org.springframework.boot.autoconfigure.webflux.WebFluxAutoConfiguration",
+    "security.jwt.refresh-token.expiration-time=604800000",
+    "security.jwt.refresh-token.cookie.secure=true",
   }
 )
 class UserControllerTest {
@@ -96,7 +104,7 @@ class UserControllerTest {
       mockProvider
     );
 
-    mockMvc
+    MvcResult result = mockMvc
       .perform(
         post("/api/v1/register")
           .contentType(MediaType.APPLICATION_JSON)
@@ -107,7 +115,12 @@ class UserControllerTest {
       .andExpect(jsonPath("$.user.email").value("test@example.com"))
       .andExpect(jsonPath("$.user.name").value("ValidName"))
       .andExpect(jsonPath("$.accessToken").isString())
-      .andExpect(cookie().exists("refresh_token"));
+      .andExpect(cookie().exists("refresh_token"))
+      .andReturn();
+
+    Cookie refreshCookie = result.getResponse().getCookie("refresh_token");
+    assertNotNull(refreshCookie);
+    assertEquals(604800, refreshCookie.getMaxAge());
   }
 
   @Test
@@ -336,7 +349,7 @@ class UserControllerTest {
       true
     );
 
-    mockMvc
+    MvcResult result = mockMvc
       .perform(
         post("/api/v1/login")
           .contentType(MediaType.APPLICATION_JSON)
@@ -347,7 +360,12 @@ class UserControllerTest {
       .andExpect(jsonPath("$.user.email").value("test@example.com"))
       .andExpect(jsonPath("$.user.name").value("ValidName"))
       .andExpect(jsonPath("$.accessToken").isString())
-      .andExpect(cookie().exists("refresh_token"));
+      .andExpect(cookie().exists("refresh_token"))
+      .andReturn();
+
+    Cookie refreshCookie = result.getResponse().getCookie("refresh_token");
+    assertNotNull(refreshCookie);
+    assertEquals(604800, refreshCookie.getMaxAge());
   }
 
   @Test
@@ -407,27 +425,87 @@ class UserControllerTest {
   }
 
   @Test
-  void getCurrentUser_WithOAuth2_ShouldReturn200() throws Exception {
-    User oauthUser = User.builder()
+  void refresh_WithRefreshToken_ShouldReturn200() throws Exception {
+    UserRequestDTO request = new UserRequestDTO(
+      null,
+      "test@example.com",
+      "Password!123"
+    );
+
+    User existingUser = User.builder()
       .userId(UUID.randomUUID())
-      .name("OAuthUser")
-      .email("oauth@example.com")
+      .name("ValidName")
+      .email(request.getEmail())
+      .password("encodedPass")
       .createdAt(LocalDateTime.now())
       .updatedAt(LocalDateTime.now())
       .build();
 
-    when(userRepository.findByEmail("oauth@example.com")).thenReturn(oauthUser);
+    when(userRepository.findByEmail(request.getEmail())).thenReturn(
+      existingUser
+    );
+    when(passwordEncoder.matches("Password!123", "encodedPass")).thenReturn(
+      true
+    );
 
-    mockMvc
+    MvcResult result = mockMvc
       .perform(
-        get("/api/v1/me").with(
-          oauth2Login().attributes(attrs ->
-            attrs.put("email", "oauth@example.com")
-          )
-        )
+        post("/api/v1/login")
+          .contentType(MediaType.APPLICATION_JSON)
+          .content(objectMapper.writeValueAsString(request))
+          .with(csrf())
       )
       .andExpect(status().isOk())
-      .andExpect(jsonPath("$.email").value("oauth@example.com"))
-      .andExpect(jsonPath("$.name").value("OAuthUser"));
+      .andExpect(jsonPath("$.user.email").value(request.getEmail()))
+      .andExpect(jsonPath("$.user.name").value("ValidName"))
+      .andExpect(jsonPath("$.accessToken").isString())
+      .andExpect(cookie().exists("refresh_token"))
+      .andReturn();
+
+    String responseBody = result.getResponse().getContentAsString();
+
+    String accessToken = JsonPath.read(responseBody, "$.accessToken");
+
+    Cookie refreshToken = result.getResponse().getCookie("refresh_token");
+
+    assertNotNull(refreshToken);
+
+    Optional<RefreshToken> token = Optional.of(
+      RefreshToken.builder().id(refreshToken.getValue()).build()
+    );
+
+    when(refreshTokenRepository.existsById(refreshToken.getValue())).thenReturn(
+      true
+    );
+    when(refreshTokenRepository.findById(refreshToken.getValue())).thenReturn(
+      token
+    );
+
+    MvcResult result2 = mockMvc
+      .perform(
+        get("/api/v1/refresh")
+          .cookie(refreshToken)
+          .header("Authorization", "Bearer " + accessToken)
+          .with(csrf())
+      )
+      .andExpect(status().isOk())
+      .andExpect(jsonPath("$.user.email").value(request.getEmail()))
+      .andExpect(jsonPath("$.user.name").value("ValidName"))
+      .andExpect(jsonPath("$.accessToken").isString())
+      .andExpect(cookie().exists("refresh_token"))
+      .andReturn();
+
+    Cookie refreshCookie = result2.getResponse().getCookie("refresh_token");
+    assertNotNull(refreshCookie);
+    assertEquals(604800, refreshCookie.getMaxAge());
+  }
+
+  @Test
+  void refresh_WithoutTokens_ShouldReturn401() throws Exception {
+    mockMvc
+      .perform(
+        get("/api/v1/refresh").header("Authorization", "Bearer ").with(csrf())
+      )
+      .andExpect(status().isUnauthorized());
   }
 }

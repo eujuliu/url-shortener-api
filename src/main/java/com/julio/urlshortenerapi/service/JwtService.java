@@ -13,11 +13,13 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class JwtService {
 
   @Value("${security.jwt.secret-key}")
@@ -33,23 +35,34 @@ public class JwtService {
   private RefreshTokenRepository refreshTokenRepository;
 
   public String extractUsername(String token) {
+    log.debug("Extracting username from token");
     return extractClaim(token, Claims::getSubject);
   }
 
   public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
+    log.debug("Extracting claim from token");
     final Claims claims = extractAllClaims(token);
     return claimsResolver.apply(claims);
   }
 
   public String generateAccessToken(User user) {
+    log.info("Generating access token for user: {}", user.getEmail());
     Map<String, Object> claims = new HashMap<>();
 
     claims.put("email", user.getEmail());
 
+    log.debug("Access token generated successfully");
     return createToken(claims, user.getEmail(), accessTokenExpiration);
   }
 
   public String generateRefreshToken(User user, String ip, String device) {
+    log.info(
+      "Generating refresh token for user: {}, ip: {}, device: {}",
+      user.getEmail(),
+      ip,
+      device
+    );
+
     Map<String, Object> claims = new HashMap<>();
 
     claims.put("email", user.getEmail());
@@ -66,10 +79,17 @@ public class JwtService {
 
     refreshTokenRepository.save(refreshToken);
 
+    log.info("Refresh token saved to repository for user: {}", user.getEmail());
     return token;
   }
 
   public Map<String, String> refresh(String oldRefreshToken, User user) {
+    log.info(
+      "Refreshing tokens for user: {}, old token: {}",
+      user.getEmail(),
+      oldRefreshToken.substring(0, 10) + "..."
+    );
+
     boolean isValid = isRefreshTokenValid(oldRefreshToken);
 
     if (!isValid) {
@@ -80,7 +100,11 @@ public class JwtService {
       .findById(oldRefreshToken)
       .get();
 
+    log.debug("Retrieved old refresh token from repository");
+
     refreshTokenRepository.deleteById(oldRefreshToken);
+
+    log.info("Deleted old refresh token from repository");
 
     String accessToken = generateAccessToken(user);
     String refreshToken = generateRefreshToken(
@@ -94,10 +118,20 @@ public class JwtService {
     tokenPair.put("accessToken", accessToken);
     tokenPair.put("refreshToken", refreshToken);
 
+    log.info(
+      "Token refresh completed successfully for user: {}",
+      user.getEmail()
+    );
+
     return tokenPair;
   }
 
   public boolean revoke(String oldRefreshToken) {
+    log.info(
+      "Revoking refresh token: {}",
+      oldRefreshToken.substring(0, 10) + "..."
+    );
+
     boolean isValid = isRefreshTokenValid(oldRefreshToken);
 
     if (!isValid) {
@@ -105,6 +139,7 @@ public class JwtService {
     }
 
     refreshTokenRepository.deleteById(oldRefreshToken);
+    log.info("Refresh token revoked successfully");
 
     return true;
   }
@@ -114,6 +149,7 @@ public class JwtService {
     String subject,
     long expiration
   ) {
+    log.debug("Creating JWT token with expiration: {} ms", expiration);
     return Jwts.builder()
       .setClaims(claims)
       .setSubject(subject)
@@ -124,34 +160,47 @@ public class JwtService {
   }
 
   public boolean isAccessTokenValid(String token, User user) {
+    log.debug("Validating access token for user: {}", user.getEmail());
     final String username = extractUsername(token);
-    return username.equals(user.getEmail()) && !isTokenExpired(token);
+    boolean isValid =
+      username.equals(user.getEmail()) && !isTokenExpired(token);
+    log.debug("Access token validation result: {}", isValid);
+    return isValid;
   }
 
   public boolean isRefreshTokenValid(String refreshJwt) {
+    log.debug("Validating refresh token");
     Claims claims = extractAllClaims(refreshJwt);
 
     if (!refreshTokenRepository.existsById(refreshJwt)) {
+      log.warn("Refresh token does not exist in repository");
       return false;
     }
 
-    if (
-      !claims
-        .getSubject()
-        .equals(refreshTokenRepository.findById(refreshJwt).get().getUsername())
-    ) {
+    RefreshToken storedToken = refreshTokenRepository
+      .findById(refreshJwt)
+      .get();
+
+    String storedTokenSubject = extractUsername(storedToken.getId());
+
+    if (!claims.getSubject().equals(storedTokenSubject)) {
+      log.warn("Refresh token subject mismatch");
       return false;
     }
 
     if (isTokenExpired(refreshJwt)) {
+      log.warn("Refresh token is expired");
       return false;
     }
 
+    log.debug("Refresh token is valid");
     return true;
   }
 
   private boolean isTokenExpired(String token) {
-    return extractExpiration(token).before(new Date());
+    boolean expired = extractExpiration(token).before(new Date());
+    log.debug("Token expired check: {}", expired);
+    return expired;
   }
 
   private Date extractExpiration(String token) {
@@ -159,6 +208,7 @@ public class JwtService {
   }
 
   private Claims extractAllClaims(String token) {
+    log.debug("Extracting all claims from token");
     return Jwts.parserBuilder()
       .setSigningKey(getSignInKey())
       .build()
@@ -167,6 +217,7 @@ public class JwtService {
   }
 
   private Key getSignInKey() {
+    log.debug("Generating signing key");
     byte[] keyBytes = Decoders.BASE64.decode(secretKey);
     return Keys.hmacShaKeyFor(keyBytes);
   }

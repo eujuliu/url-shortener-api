@@ -6,8 +6,8 @@ services:
 
 watch:
 	cat .env* 2>/dev/null | grep -E '^[A-Za-z_][A-Za-z0-9_]*=.+' | awk -F= '!seen[$$1]++' > .env.docker; \
-	docker compose -f ./docker-compose.dev.yml -p shortener  up shortener watch_mode --watch --build --force-recreate --attach shortener; \
-	docker stop shortener watch_mode; \
+	docker compose -f ./docker-compose.dev.yml -p shortener  up shortener watch_mode ngrok --watch --build --force-recreate --attach shortener; \
+	docker stop shortener watch_mode ngrok; \
 	docker system prune --all --filter "label=com.docker.compose.project=shortener" --force; \
 	docker volume rm shortener_root shortener_app
 

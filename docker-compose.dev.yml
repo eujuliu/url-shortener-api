@@ -99,6 +99,10 @@ services:
         - action: rebuild
           path: ./.env.docker
           target: /app/
+
+        - action: rebuild
+          path: ./src/main/resources/application.properties
+          target: /app/src/main/resources/application.properties
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8080/actuator/health/liveness"]
       interval: 10s
@@ -124,6 +128,23 @@ services:
         ./mvnw compile;
       done
       "
+
+  ngrok:
+    image: ngrok/ngrok:latest
+    restart: unless-stopped
+    container_name: ngrok
+    depends_on:
+      shortener:
+        condition: service_healthy
+    command:
+      - "http"
+      - "--url=${NGROK_URL}"
+      - "http://shortener:8080"
+    env_file: ./.env.docker
+    profiles: [all]
+    ports:
+      - 4040:4040
+
 volumes:
   app:
   root:
