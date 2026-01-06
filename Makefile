@@ -22,3 +22,7 @@ watch_down:
 watch_prune:
 	docker stop $$(docker ps -a -q --filter "label=com.docker.compose.project=shortener"); \
 	docker system prune -a --filter "label=com.docker.compose.project=shortener" -f
+
+test_oauth:
+	# npm i -g live-server
+	live-server --port=5050 --host="localhost" --watch=./test-static --entry-file=./test-static/index.html --cors

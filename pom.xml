@@ -119,6 +119,23 @@
       <artifactId>jjwt-jackson</artifactId>
       <version>0.11.5</version>
     </dependency>
+
+    <dependency>
+        <groupId>io.micrometer</groupId>
+        <artifactId>micrometer-registry-prometheus</artifactId>
+    </dependency>
+
+    <dependency>
+        <groupId>com.github.loki4j</groupId>
+        <artifactId>loki-logback-appender</artifactId>
+        <version>1.4.1</version>
+    </dependency>
+
+    <dependency>
+        <groupId>net.logstash.logback</groupId>
+        <artifactId>logstash-logback-encoder</artifactId>
+        <version>9.0</version>
+    </dependency>
 	</dependencies>
 
 	<build>

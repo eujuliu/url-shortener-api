@@ -7,6 +7,8 @@ import com.julio.urlshortenerapi.repository.UserRepository;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
@@ -23,6 +25,10 @@ import org.springframework.web.client.RestTemplate;
 
 @Service
 public class OAuth2Service extends DefaultOAuth2UserService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(
+    OAuth2Service.class
+  );
 
   @Autowired
   private UserRepository userRepository;
@@ -41,6 +47,8 @@ public class OAuth2Service extends DefaultOAuth2UserService {
     String name;
     String email;
     Boolean emailVerified;
+
+    LOG.debug("oauth login/register with {}", registrationId);
 
     switch (registrationId) {
       case "google":
@@ -75,6 +83,8 @@ public class OAuth2Service extends DefaultOAuth2UserService {
       user = User.builder().name(name).email(email).build();
 
       this.userRepository.save(user);
+
+      LOG.debug("created new user with {} oauth2", registrationId);
     }
 
     OAuthProvider oAuthProvider =
@@ -92,6 +102,7 @@ public class OAuth2Service extends DefaultOAuth2UserService {
         .build();
 
       this.oAuthProviderRepository.save(oAuthProvider);
+      LOG.debug("created new provider with {} oauth2", registrationId);
     }
 
     Map<String, Object> customAttributes = new HashMap<>(attributes);
@@ -118,6 +129,7 @@ public class OAuth2Service extends DefaultOAuth2UserService {
     HttpEntity<String> entity = new HttpEntity<>("", headers);
 
     try {
+      LOG.debug("fetching github email");
       ResponseEntity<List<Map<String, Object>>> response =
         restTemplate.exchange(
           emailApiUrl,
@@ -129,6 +141,8 @@ public class OAuth2Service extends DefaultOAuth2UserService {
       List<Map<String, Object>> emails = response.getBody();
 
       if (emails != null) {
+        LOG.debug("find emails into github");
+
         return emails
           .stream()
           .filter(e -> (Boolean) e.get("primary"))

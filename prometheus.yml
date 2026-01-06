@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "shortener"
+    metrics_path: "/actuator/prometheus"
+    static_configs:
+      - targets: ["shortener:8080"]
+
+  - job_name: cassandra
+    static_configs:
+      - targets: [cassandra:7070]
+
+  - job_name: "redis"
+    static_configs:
+      - targets: ["redis_exporter:9121"]

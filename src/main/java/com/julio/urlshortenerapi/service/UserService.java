@@ -7,12 +7,16 @@ import com.julio.urlshortenerapi.repository.UserRepository;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
 import com.julio.urlshortenerapi.shared.errors.NotFoundError;
 import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class UserService {
+
+  private static final Logger LOG = LoggerFactory.getLogger(UserService.class);
 
   @Autowired
   private UserRepository userRepository;
@@ -39,6 +43,8 @@ public class UserService {
 
     this.userRepository.save(user);
 
+    LOG.debug("added new user to repository");
+
     OAuthProvider provider = OAuthProvider.builder()
       .email(user.getEmail())
       .userId(user.getUserId())
@@ -47,6 +53,10 @@ public class UserService {
       .build();
 
     this.oauthProviderRepository.save(provider);
+    LOG.debug(
+      "added new oauth to repository for user {}",
+      user.getUserId().toString()
+    );
 
     return user;
   }
@@ -70,6 +80,8 @@ public class UserService {
       throw new UnauthorizedError("Invalid Password or Email", 0);
     }
 
+    LOG.debug("get user {} by email and password", user.getUserId().toString());
+
     return user;
   }
 
@@ -83,6 +95,8 @@ public class UserService {
     if (user == null) {
       throw new NotFoundError("User not found for this email", 0);
     }
+
+    LOG.debug("get user {} by email", user.getUserId().toString());
 
     return user;
   }

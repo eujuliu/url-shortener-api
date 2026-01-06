@@ -8,8 +8,9 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -21,9 +22,12 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 
-@Slf4j
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+  private static final Logger LOG = LoggerFactory.getLogger(
+    JwtAuthenticationFilter.class
+  );
 
   @Autowired
   private HandlerExceptionResolver handlerExceptionResolver;
@@ -43,6 +47,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     final String authHeader = request.getHeader("Authorization");
 
     if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+      LOG.error(
+        "User {} without Bearer Header",
+        ControllerHelpers.getUserIp(request)
+      );
       filterChain.doFilter(request, response);
       return;
     }
@@ -72,12 +80,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
           );
 
           SecurityContextHolder.getContext().setAuthentication(authToken);
+
+          LOG.info(
+            "created security context for user id {}",
+            userDetails.getUsername()
+          );
         }
       }
 
       filterChain.doFilter(request, response);
     } catch (Exception exception) {
-      log.error(
+      LOG.error(
         "Error processing request: {} {}",
         request.getMethod(),
         request.getRequestURI(),

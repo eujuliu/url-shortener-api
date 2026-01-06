@@ -3,11 +3,17 @@ package com.julio.urlshortenerapi.component;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public final class ControllerHelpers {
+
+  private static final Logger LOG = LoggerFactory.getLogger(
+    ControllerHelpers.class
+  );
 
   private static long refreshTokenExpiration;
   private static boolean refreshTokenCookieSecure;
@@ -25,6 +31,8 @@ public final class ControllerHelpers {
   public static String getUserDevice(HttpServletRequest request) {
     String userAgent = request.getHeader("User-Agent");
 
+    LOG.debug("User agent: {}", userAgent);
+
     return userAgent;
   }
 
@@ -36,6 +44,8 @@ public final class ControllerHelpers {
     if (forwardedForHeader != null && !forwardedForHeader.isEmpty()) {
       ipAddress = forwardedForHeader.split(",")[0].trim();
     }
+
+    LOG.debug("User IP: {}", ipAddress);
 
     return ipAddress;
   }
@@ -51,6 +61,12 @@ public final class ControllerHelpers {
     refreshCookie.setAttribute("SameSite", "Lax");
     refreshCookie.setHttpOnly(true);
     refreshCookie.setPath("/");
+
+    LOG.info(
+      "Set Refresh Token: Expiration {}s, Secure? {}",
+      refreshTokenExpiration / 1000,
+      refreshTokenCookieSecure
+    );
 
     response.addCookie(refreshCookie);
   }

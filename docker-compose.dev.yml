@@ -4,6 +4,7 @@ services:
     container_name: cassandra1
     ports:
       - "9042:9042"
+      - "7070:7070"
     environment: &environment
       CASSANDRA_SEEDS: "cassandra1,cassandra2"
       CASSANDRA_CLUSTER_NAME: MyTestCluster
@@ -11,6 +12,8 @@ services:
       CASSANDRA_RACK: RACK1
       CASSANDRA_ENDPOINT_SNITCH: GossipingPropertyFileSnitch
       JVM_EXTRA_OPTS: "-Xms256M -Xmx512M"
+      LOCAL_JMX: yes
+      JMX_PORT: 7070
     healthcheck:
       test: ["CMD-SHELL", "nodetool status"]
       interval: 1m
@@ -65,6 +68,18 @@ services:
       interval: 10s
       timeout: 3s
       retries: 3
+    profiles: [services, all]
+
+  redis_exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: redis_exporter
+    restart: unless-stopped
+    command: --redis.addr redis:6379
+    ports:
+      - "9121:9121"
+    depends_on:
+      redis:
+        condition: service_healthy
     profiles: [services, all]
 
   shortener:
@@ -145,9 +160,94 @@ services:
     ports:
       - 4040:4040
 
+  prometheus:
+    image: prom/prometheus
+    restart: unless-stopped
+    container_name: prometheus
+    volumes:
+      - prometheus_data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    profiles: [services, all]
+
+  loki:
+    image: grafana/loki:latest
+    restart: unless-stopped
+    container_name: loki
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./loki.yaml:/etc/loki/config.yaml:ro
+      - loki_data:/loki:rw
+    command: -config.file=/etc/loki/config.yaml
+    profiles: [services, all]
+
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:latest
+    restart: unless-stopped
+    container_name: jaeger
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    profiles: [services, all]
+
+  grafana:
+    image: grafana/grafana
+    restart: unless-stopped
+    container_name: grafana
+    ports:
+      - "${GF_PORT:-3000}:3000"
+    environment:
+      - GF_PORT=${GF_PORT:-3000}
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD:-admin}
+      - GF_PATHS_PROVISIONING=/etc/grafana/provisioning
+    entrypoint:
+      - sh
+      - -euc
+      - |
+        mkdir -p /etc/grafana/provisioning/datasources
+        cat <<EOF > /etc/grafana/provisioning/datasources/ds.yaml
+        apiVersion: 1
+        datasources:
+          - name: jaeger
+            type: jaeger
+            url: http://jaeger:16686
+            access: proxy
+            jsonData:
+              pdcInjected: false
+
+          - name: loki
+            type: loki
+            url: http://loki:3100
+            access: proxy
+            jsonData:
+              pdcInjected: false
+
+          - name: prometheus
+            type: prometheus
+            url: http://prometheus:9090
+            access: proxy
+            jsonData:
+              pdcInjected: false
+        EOF
+        /run.sh
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+    profiles: [services, all]
+
 volumes:
   app:
   root:
+  prometheus_data:
+  grafana_data:
+  loki_data:
 
 networks:
   default:

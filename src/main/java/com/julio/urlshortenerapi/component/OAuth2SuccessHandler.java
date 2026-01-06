@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
@@ -17,6 +19,10 @@ import org.springframework.stereotype.Component;
 @Component
 public class OAuth2SuccessHandler
   extends SimpleUrlAuthenticationSuccessHandler {
+
+  private static final Logger LOG = LoggerFactory.getLogger(
+    OAuth2SuccessHandler.class
+  );
 
   @Autowired
   private JwtService jwtService;
@@ -51,6 +57,11 @@ public class OAuth2SuccessHandler
     );
 
     ControllerHelpers.setRefreshToken(refreshToken, sResponse);
+
+    LOG.info(
+      "oauth2 login completed with success for user id {}",
+      user.getUserId().toString()
+    );
 
     super.onAuthenticationSuccess(sRequest, sResponse, authentication);
   }

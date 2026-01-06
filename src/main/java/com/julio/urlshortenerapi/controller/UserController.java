@@ -13,11 +13,10 @@ import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -30,14 +29,31 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1")
-@Slf4j
 public class UserController {
+
+  private static final Logger LOG = LoggerFactory.getLogger(
+    UserController.class
+  );
 
   @Autowired
   private UserService userService;
 
   @Autowired
   private JwtService jwtService;
+
+  @ExceptionHandler(MissingRequestCookieException.class)
+  public ResponseEntity<UnauthorizedError> cookieError(
+    MissingRequestCookieException ex
+  ) {
+    LOG.error("refresh token is missing into request");
+
+    UnauthorizedError error = new UnauthorizedError(
+      "Refresh token cookie is required",
+      0
+    );
+
+    return ResponseEntity.status(error.code).body(error);
+  }
 
   @PostMapping("/register")
   public AccessTokenResponseDTO register(
@@ -149,17 +165,5 @@ public class UserController {
       .accessToken(tokens.get("accessToken"))
       .user(userResponse)
       .build();
-  }
-
-  @ExceptionHandler(MissingRequestCookieException.class)
-  public ResponseEntity<UnauthorizedError> cookieError(
-    MissingRequestCookieException ex
-  ) {
-    UnauthorizedError error = new UnauthorizedError(
-      "Refresh token cookie is required",
-      0
-    );
-
-    return ResponseEntity.status(error.code).body(error);
   }
 }
