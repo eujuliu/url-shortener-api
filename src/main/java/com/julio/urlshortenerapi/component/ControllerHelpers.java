@@ -46,10 +46,6 @@ public final class ControllerHelpers {
   ) {
     Cookie refreshCookie = new Cookie("refresh_token", token);
 
-    System.out.print(
-      "the refresh token expiration is " + refreshTokenExpiration
-    );
-
     refreshCookie.setMaxAge((int) (refreshTokenExpiration / 1000));
     refreshCookie.setSecure(refreshTokenCookieSecure);
     refreshCookie.setAttribute("SameSite", "Lax");

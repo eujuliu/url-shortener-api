@@ -16,6 +16,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.reactive.CorsConfigurationSource;
 import org.springframework.web.cors.reactive.UrlBasedCorsConfigurationSource;
@@ -39,15 +41,15 @@ public class SecurityConfig {
     @Value("${security.oauth2.success-url}") String successUrl,
     @Value("${security.oauth2.failure-url}") String failureUrl
   ) throws Exception {
-    http.csrf(
-      csrf -> csrf.disable()
-      // .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
-      // .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
-      // .ignoringRequestMatchers(
-      //   "/api/v1/login",
-      //   "/api/v1/register",
-      //   "/api/v1/refresh"
-      // )
+    http.csrf(csrf ->
+      csrf
+        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+        .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
+        .ignoringRequestMatchers(
+          "/api/v1/login",
+          "/api/v1/register",
+          "/api/v1/refresh"
+        )
     );
 
     http.sessionManagement(session ->

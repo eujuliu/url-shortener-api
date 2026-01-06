@@ -16,6 +16,8 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.MissingRequestCookieException;
 import org.springframework.web.bind.annotation.CookieValue;
@@ -160,37 +162,4 @@ public class UserController {
 
     return ResponseEntity.status(error.code).body(error);
   }
-
-  // @GetMapping("/me")
-  // public AccessTokenResponseDTO getCurrentUser(
-  //   @AuthenticationPrincipal OAuth2User principal,
-  //   HttpServletRequest sRequest,
-  //   HttpServletResponse sResponse
-  // ) throws NotFoundError, UnauthorizedError {
-  //   User user = this.userService.getUserByEmail(
-  //     principal.getAttribute("email")
-  //   );
-
-  //   String accessToken = jwtService.generateAccessToken(user);
-  //   String refreshToken = jwtService.generateRefreshToken(
-  //     user,
-  //     ControllerHelpers.getUserIp(sRequest),
-  //     ControllerHelpers.getUserDevice(sRequest)
-  //   );
-
-  //   ControllerHelpers.setRefreshToken(refreshToken, sResponse);
-
-  //   UserResponseDTO userResponse = UserResponseDTO.builder()
-  //     .userId(user.getUserId().toString())
-  //     .name(user.getName())
-  //     .email(user.getEmail())
-  //     .createdAt(user.getCreatedAt())
-  //     .updatedAt(user.getUpdatedAt())
-  //     .build();
-
-  //   return AccessTokenResponseDTO.builder()
-  //     .accessToken(accessToken)
-  //     .user(userResponse)
-  //     .build();
-  // }
 }
