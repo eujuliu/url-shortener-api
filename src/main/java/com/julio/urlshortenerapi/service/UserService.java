@@ -1,10 +1,12 @@
 package com.julio.urlshortenerapi.service;
 
-import com.julio.urlshortenerapi.dto.UserRequestDTO;
-import com.julio.urlshortenerapi.dto.UserResponseDTO;
+import com.julio.urlshortenerapi.model.OAuthProvider;
 import com.julio.urlshortenerapi.model.User;
+import com.julio.urlshortenerapi.repository.OAuthProviderRepository;
 import com.julio.urlshortenerapi.repository.UserRepository;
 import com.julio.urlshortenerapi.shared.errors.ConflictError;
+import com.julio.urlshortenerapi.shared.errors.NotFoundError;
+import com.julio.urlshortenerapi.shared.errors.UnauthorizedError;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -16,29 +18,72 @@ public class UserService {
   private UserRepository userRepository;
 
   @Autowired
+  private OAuthProviderRepository oauthProviderRepository;
+
+  @Autowired
   private PasswordEncoder passwordEncoder;
 
-  public UserResponseDTO create(UserRequestDTO data) throws ConflictError {
-    User exists = this.userRepository.findByEmail(data.getEmail());
+  public User create(String email, String name, String password)
+    throws ConflictError, Exception {
+    User user = this.userRepository.findByEmail(email);
 
-    if (exists != null) {
+    if (user != null) {
       throw new ConflictError(null, 0);
     }
 
-    User user = User.builder()
-      .name(data.getName())
-      .email(data.getEmail())
-      .password(this.passwordEncoder.encode(data.getPassword()))
+    user = User.builder()
+      .name(name)
+      .email(email)
+      .password(this.passwordEncoder.encode(password))
       .build();
 
     this.userRepository.save(user);
 
-    return UserResponseDTO.builder()
-      .name(user.getName())
+    OAuthProvider provider = OAuthProvider.builder()
       .email(user.getEmail())
-      .userId(user.getUserId().toString())
-      .createdAt(user.getCreatedAt())
-      .updatedAt(user.getUpdatedAt())
+      .userId(user.getUserId())
+      .provider("password")
+      .emailVerified(false)
       .build();
+
+    this.oauthProviderRepository.save(provider);
+
+    return user;
+  }
+
+  public User getUserByEmailAndPassword(String email, String password)
+    throws NotFoundError, ConflictError, UnauthorizedError {
+    User user = this.userRepository.findByEmail(email);
+
+    if (user == null) {
+      throw new NotFoundError(null, 0);
+    }
+
+    if (user.getPassword() == null || user.getPassword().isEmpty()) {
+      throw new ConflictError(
+        "Please login using your Social Provider (Google or Github)",
+        0
+      );
+    }
+
+    if (!passwordEncoder.matches(password, user.getPassword())) {
+      throw new UnauthorizedError("Invalid Password or Email", 0);
+    }
+
+    return user;
+  }
+
+  public User getUserByEmail(String email) throws NotFoundError {
+    if (email == null) {
+      throw new NotFoundError("User not found for this email", 0);
+    }
+
+    User user = userRepository.findByEmail(email);
+
+    if (user == null) {
+      throw new NotFoundError("User not found for this email", 0);
+    }
+
+    return user;
   }
 }

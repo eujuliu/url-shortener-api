@@ -14,42 +14,33 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserRequestDTO {
 
-  @NotBlank
-  @Size(min = 5, max = 64)
+  public interface OnCreate {}
+
+  public interface OnLogin {}
+
+  @NotBlank(groups = OnCreate.class)
+  @Size(min = 5, max = 64, groups = OnCreate.class)
+  @NotNull(groups = OnCreate.class)
   @Pattern(
     regexp = "^[A-Za-z0-9]+$",
-    message = "Name must contain only letters and numbers"
+    message = "Name must contain only letters and numbers",
+    groups = OnCreate.class
   )
   private String name;
 
-  @Email
-  @NotBlank
-  @NotNull
+  @Email(groups = { OnCreate.class, OnLogin.class })
+  @NotBlank(groups = { OnCreate.class, OnLogin.class })
+  @NotNull(groups = { OnCreate.class, OnLogin.class })
   @Size(max = 254)
   private String email;
 
-  @NotBlank
-  @NotNull
-  @Size(min = 8, max = 72)
-  @Pattern.List(
-    {
-      @Pattern(
-        regexp = ".*[a-z].*",
-        message = "Password must contain at least 1 lowercase letter"
-      ),
-      @Pattern(
-        regexp = ".*[A-Z].*",
-        message = "Password must contain at least 1 uppercase letter"
-      ),
-      @Pattern(
-        regexp = ".*\\d.*",
-        message = "Password must contain at least 1 digit"
-      ),
-      @Pattern(
-        regexp = ".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*",
-        message = "Password must contain at least 1 special character"
-      ),
-    }
+  @NotBlank(groups = { OnCreate.class, OnLogin.class })
+  @NotNull(groups = { OnCreate.class, OnLogin.class })
+  @Size(min = 8, max = 72, groups = { OnCreate.class, OnLogin.class })
+  @Pattern(
+    regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?]).+$",
+    message = "Password don't fill the requirements",
+    groups = { OnCreate.class, OnLogin.class }
   )
   private String password;
 }

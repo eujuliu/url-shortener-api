@@ -5,10 +5,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-@RestControllerAdvice
+@ControllerAdvice
 public class GlobalControllerAdvice {
 
   private static final Logger logger = LoggerFactory.getLogger(
@@ -19,6 +19,10 @@ public class GlobalControllerAdvice {
   public ResponseEntity<Error> handleValidationException(
     MethodArgumentNotValidException ex
   ) {
+    logger.error(
+      String.format("%s: %s", ex.getClass().getName(), ex.getMessage())
+    );
+
     List<String> errors = ex
       .getBindingResult()
       .getFieldErrors()

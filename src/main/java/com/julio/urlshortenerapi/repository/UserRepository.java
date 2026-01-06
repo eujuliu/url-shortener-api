@@ -10,8 +10,10 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface UserRepository extends CassandraRepository<User, UUID> {
   @Nullable
+  @Query("SELECT * FROM users WHERE email = ?0")
   User findByEmail(String email);
 
   @Nullable
+  @Query("SELECT * FROM users WHERE user_id = ?0")
   User findByUserId(UUID userId);
 }
